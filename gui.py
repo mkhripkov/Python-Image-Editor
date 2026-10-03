@@ -3,15 +3,14 @@ from PIL import Image, ImageFilter, ImageOps
 from io import BytesIO
 from pathlib import Path
 
-# allow user to resize
-# add menu bar
-# add more pillow things
 
-
-def update_image(original, blur, contrast, emboss, contour, flipx, flipy):
+def update_image(original, blur, contrast, rotate, x, y, emboss, contour, flipx, flipy):
     global image
+
     image = original.filter(ImageFilter.GaussianBlur(blur))
     image = image.filter(ImageFilter.UnsharpMask(contrast))
+    image = image.rotate(rotate)
+    image = image.resize((x, y))
 
     if emboss:
         image = image.filter(ImageFilter.EMBOSS())
@@ -40,8 +39,10 @@ def main_window():
 
     # Menu Bar
     menu_def = [
-        ['Help', ['About', 'GUI Info', 'Exit',]],
+        ['Help', ['About', 'GUI Info', 'Exit', ]],
     ]
+
+    original = Image.open(image_path)
 
     # GUI
     controls_col = sg.Column([
@@ -49,17 +50,19 @@ def main_window():
                   [sg.Slider(range=(0, 10), orientation="horizontal", key="-BLUR-")]])],
         [sg.Frame("Contrast", layout=[
                   [sg.Slider(range=(0, 10), orientation="horizontal", key="-CONTRAST-")]])],
-        [sg.Checkbox("Emboss", key="-EMBOSS-"),
-         sg.Checkbox("Contour", key="-CONTOUR-")],
-        [sg.Checkbox("Flip X", key="-FLIPX-"),
-         sg.Checkbox("Flip Y", key="-FLIPY-")],
+        [sg.Frame("Rotate", layout=[
+                  [sg.Slider(range=(0, 359), orientation="horizontal", key="-ROTATE-")]])],
+        [sg.Frame("Resize", layout=[[sg.Text('X:'), sg.Spin([i for i in range(1, 1921)], initial_value=original.width,
+                  key='-X-'), sg.Text('Y:'), sg.Spin([i for i in range(1, 1281)], initial_value=original.height, key='-Y-'), ]])],
+        [sg.Checkbox("Emboss", key="-EMBOSS-"), sg.Checkbox("Contour", key="-CONTOUR-")
+         ], [sg.Checkbox("Flip X", key="-FLIPX-"), sg.Checkbox("Flip Y", key="-FLIPY-")],
         [sg.Button("Exit", key='-EXIT-', button_color='red'), sg.Button("Save", key="-SAVE-", button_color='green')]])
 
-    image_col = sg.Column([[sg.Image(image_path, key='-IMAGE-')]])
+    image_col = sg.Column(
+        [[sg.Image(image_path, key='-IMAGE-')]])
 
     layout = [[[sg.MenubarCustom(menu_def)], controls_col, image_col]]
 
-    original = Image.open(image_path)
     global window
     window = sg.Window("Python PNG Editor", layout, use_custom_titlebar=True)
 
@@ -71,6 +74,9 @@ def main_window():
             original,
             values['-BLUR-'],
             values['-CONTRAST-'],
+            values['-ROTATE-'],
+            values['-X-'],
+            values['-Y-'],
             values['-EMBOSS-'],
             values['-CONTOUR-'],
             values['-FLIPX-'],
@@ -80,7 +86,7 @@ def main_window():
         if event == 'About':
             window.disappear()
             sg.popup('Version 1.0', 'This program allows users to quickly edit PNG files',
-                     'Built with Python and PySimpleGUI')
+                     'Built with Pillow and PySimpleGUI')
             window.reappear()
 
         if event == 'GUI Info':
